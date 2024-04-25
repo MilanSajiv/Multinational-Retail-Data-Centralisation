@@ -1,62 +1,55 @@
 import yaml
-from sqlalchemy import create_engine
-import pandas as pd
-from sqlalchemy import inspect
+import sqlalchemy
+import psycopg2
 
 class DatabaseConnector:
-    def read_db_creds(self, file_path):
-        with open(file_path, 'r') as file:
+
+    def read_db_creds(self):
+        with open('db_creds.yaml', 'r') as file:
             creds = yaml.safe_load(file)
         return creds
     
-    def init_db_engine(self, creds):
-        connection_string = f"postgresql://{creds['RDS_USER']}:{creds['RDS_PASSWORD']}@{creds['RDS_HOST']}:{creds['RDS_PORT']}/{creds['RDS_DATABASE']}"
-        engine = create_engine(connection_string)
+    def init_db_engine(self):
+        creds = self.read_db_creds()
+
+        database_type = 'postgresql'
+        host = creds['RDS_HOST']
+        username = creds['RDS_USER']
+        password = creds['RDS_PASSWORD']
+        database = creds['RDS_DATABASE']
+        port = creds['RDS_PORT']
+
+        db_conn_url = f"{database_type}://{username}:{password}@{host}:{port}/{database}"
+        engine = sqlalchemy.create_engine(db_conn_url)
         return engine
-    
-    def upload_to_db(self, df, table_name, engine):
-        df.to_sql(table_name, con=engine, if_exists='replace', index=False)
 
-    def read_from_db(self, engine, query):
+    def list_db_tables(self):
+        engine = self.init_db_engine()
         with engine.connect() as connection:
-            result = connection.execute(query)
-            data = result.fetchall()
-        return data
-    
-    def read_db_creds(self, file_path):
-        with open(file_path, 'r') as file:
-            creds = yaml.safe_load(file)
-        return creds
-    
-    def init_db_engine(self, creds):
-        connection_string = f"postgresql://{creds['RDS_USER']}:{creds['RDS_PASSWORD']}@{creds['RDS_HOST']}:{creds['RDS_PORT']}/{creds['RDS_DATABASE']}"
-        engine = create_engine(connection_string)
-        return engine
-    
-    def upload_to_db(self, df, table_name, engine):
-        df.to_sql(table_name, con=engine, if_exists='replace', index=False)
+            metadata = sqlalchemy.MetaData()
+            metadata.reflect(bind=connection)
+            table_names = metadata.tables.keys()
+            return table_names
 
-    def read_from_db(self, engine, query):
-        with engine.connect() as connection:
-            result = connection.execute(query)
-            data = result.fetchall()
-        return data
+    def upload_to_db(self, df, table_name):
 
-    def list_db_tables(self, engine):
-        # Method to list all tables in the database
-        tables = engine.table_names()
-        return tables
+        DATABASE_TYPE = 'postgresql'
+        DBAPI = 'psycopg2'
+        HOST = 'localhost'
+        USER = 'postgres'
+        PASSWORD = '....'
+        DATABASE = 'sales_data'
+        PORT = 5432
+        local_engine = sqlalchemy.create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
+        df.to_sql(table_name, local_engine, if_exists='replace')
 
-    def read_rds_table(self, engine, table_name):
-        # Method to read data from a specific table in the database
-        query = f"SELECT * FROM {table_name}"
-        df = pd.read_sql_query(query, engine)
-        return df
-    
-    def list_db_tables(self, engine):
-        # Method to list all tables in the database
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
-        return tables
+if __name__ == '__main__':
+    db_connector = DatabaseConnector()
+    print('Tables in Database:', db_connector.list_db_tables())
+   
+    from data_cleaning import DataCleaning
+    from data_extraction import DataExtractor
+    db_connector.upload_to_db(DataCleaning().clean_user_data(), 'dim_users')
+
 
 
