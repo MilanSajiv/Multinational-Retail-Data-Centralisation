@@ -52,7 +52,7 @@ python data_extraction.py
 python data_cleaning.py
 python data_querying.py
 ```
-5. Follow the prompts or configure the scripts as necessary to perform the desired data operations.
+4. Follow the prompts or configure the scripts as necessary to perform the desired data operations.
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
