@@ -1,0 +1,6 @@
+pandas
+sqlalchemy
+requests
+tabula-py
+boto3
+numpy
